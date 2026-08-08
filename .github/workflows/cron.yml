@@ -1,0 +1,56 @@
+name: 定时任务
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+          architecture: x64
+      - run: pip install requests
+
+      - name: 全局配置
+        run: |
+          git config --global user.name "${{ secrets.GIT_NAME }}"
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global init.defaultBranch main
+
+      - name: 获取目录
+        id: get_dir
+        run: |
+          dir=$(find ../workflow/scripts -maxdepth 1 -type d -not -path "../workflow/scripts" | sed 's|../workflow/scripts/||' | tr '\n' ',' | sed 's/,$//')
+          echo "dir=$dir" >> $GITHUB_OUTPUT
+
+      - name: Run job
+        env:
+          DIR: ${{ steps.get_dir.outputs.dir }}
+          ARGS: ${{ vars.ARGS }}
+        run: |
+          printf '%s' "$ARGS" > args.json
+          params=""
+          while IFS= read -r key; do
+            value=$(jq -r ".\"$key\"" args.json)
+            if [ -n "$value" ] && [ "$value" != "null" ]; then
+              params="$params --$key $value"
+            fi
+          done < <(jq -r 'keys[]' args.json)
+
+          IFS=',' read -r -a items <<< "${DIR}"
+          for item in "${items[@]}"; do
+            git clone https://username:${{ secrets.GIT_TOKEN }}@github.com/rainte/$item.git ../$item
+            cd ../$item
+            python ../workflow/scripts/$item/index.py --token ${{ secrets.GIT_TOKEN }} $params
+
+            git add -A
+            if ! git diff --exit-code --cached; then
+              git commit -m "Auto update"
+              git push
+            fi
+          done

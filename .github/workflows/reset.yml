@@ -1,0 +1,42 @@
+name: 重置历史
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: '目标仓库（格式: owner/repo）'
+        required: true
+        default: ''
+      target_branch:
+        description: '要重置的分支'
+        required: true
+        default: 'main'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.inputs.target_repo }}
+          token: ${{ secrets.GIT_TOKEN }}
+          fetch-depth: 0
+
+      - name: 全局配置
+        run: |
+          git config --global user.name "${{ secrets.GIT_NAME }}"
+          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global init.defaultBranch main
+
+      - name: 重置历史
+        run: |
+          BRANCH="${{ github.event.inputs.target_branch }}"
+          REMOTE_URL="${{ steps.get_remote.outputs.remote_url }}"
+
+          rm -rf .git
+          git init
+          git remote add origin https://${{ secrets.GIT_TOKEN }}@github.com/${{ github.event.inputs.target_repo }}.git
+          git add -A
+          git commit -m "Initial commit"
+          git push -f origin HEAD:$BRANCH

@@ -1,0 +1,19 @@
+name: webhook
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ vars.SSH_HOSTNAME }} >> ~/.ssh/known_hosts
+
+      - name: Run git pull on remote server
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ vars.SSH_HOSTNAME }} "cd ${{ vars.SSH_PATH }} && git fetch --all && git reset --hard origin/main"
