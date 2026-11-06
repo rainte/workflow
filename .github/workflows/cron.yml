@@ -1,0 +1,35 @@
+name: 定时任务
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
+
+permissions:
+  contents: write
+
+env:
+  GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+  GIT_AUTHOR_NAME: ${{ vars.GIT_USER }}
+  GIT_AUTHOR_EMAIL: ${{ vars.GIT_EMAIL }}
+  GIT_COMMITTER_NAME: ${{ vars.GIT_USER }}
+  GIT_COMMITTER_EMAIL: ${{ vars.GIT_EMAIL }}
+  OWNER: rainte
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run all tasks
+        env:
+          # GIST.
+          GIST_ID: ${{ vars.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIT_TOKEN }}
+          # 任务参数.
+          MAX_WORKERS: '4'
+          SINGBOX_URL1: ${{ vars.SINGBOX_URL1 }}
+          SINGBOX_URL2: ${{ vars.SINGBOX_URL2 }}
+          SINGBOX_URL3: ${{ vars.SINGBOX_URL3 }}
+          SINGBOX_URL4: ${{ vars.SINGBOX_URL4 }}
+        run: python3 scripts/main.py

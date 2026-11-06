@@ -1,0 +1,53 @@
+name: 重置历史
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: '目标仓库'
+        required: true
+        default: 'rainte/repo'
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+env:
+  GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+  GIT_AUTHOR_NAME: ${{ vars.GIT_USER }}
+  GIT_AUTHOR_EMAIL: ${{ vars.GIT_EMAIL }}
+  GIT_COMMITTER_NAME: ${{ vars.GIT_USER }}
+  GIT_COMMITTER_EMAIL: ${{ vars.GIT_EMAIL }}
+
+jobs:
+  reset-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.target_repo }}
+          token: ${{ secrets.GIT_TOKEN }}
+          ref: main
+          fetch-depth: 1
+
+      - name: 重置历史
+        env:
+          TARGET_REPO: ${{ inputs.target_repo }}
+        run: |
+          rm -rf .git
+          git init -b main
+          git add -A
+          git commit -m "Initial commit"
+          git push -f "https://x-access-token:${GIT_TOKEN}@github.com/${TARGET_REPO}.git" HEAD:main
+
+  clear-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Mattraks/delete-workflow-runs@v2.1.0
+        with:
+          token: ${{ secrets.GIT_TOKEN }}
+          repository: ${{ inputs.target_repo }}
+          retain_days: 0
+          keep_minimum_runs: 0
